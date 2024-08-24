@@ -14,11 +14,47 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final MapController _mapController = MapController();
+  late AnimationController _animationController;
+  late Animation<double> _animation;
+  LatLng? _startPosition;
+  LatLng? _targetPosition;
 
-  void _centerMapOnSpot(LatLng location) {
-    _mapController.move(location, 15);
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _animation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _animatedMoveToSpot(LatLng targetLocation) {
+    _startPosition = _mapController.center;
+    _targetPosition = targetLocation;
+    _animationController.reset();
+    _animationController.forward();
+
+    _animation.addListener(() {
+      final double lat = _startPosition!.latitude +
+          (_targetPosition!.latitude - _startPosition!.latitude) *
+              _animation.value;
+      final double lng = _startPosition!.longitude +
+          (_targetPosition!.longitude - _startPosition!.longitude) *
+              _animation.value;
+      _mapController.move(LatLng(lat, lng), 15);
+    });
   }
 
   @override
@@ -26,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '涼スポットファインダー',
+          'せいかつがかり',
           style: GoogleFonts.notoSans(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.blue.shade700,
@@ -59,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               width: 150,
                               height: 80,
                               builder: (ctx) => GestureDetector(
-                                onTap: () => _centerMapOnSpot(spot.location),
+                                onTap: () => _animatedMoveToSpot(spot.location),
                                 child: CoolSpotMarker(spot: spot),
                               ),
                               anchorPos: AnchorPos.align(AnchorAlign.bottom),
@@ -80,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: CoolSpotCard(
                     spot: coolSpots[index],
-                    onTap: () => _centerMapOnSpot(coolSpots[index].location),
+                    onTap: () => _animatedMoveToSpot(coolSpots[index].location),
                   ),
                 );
               },
